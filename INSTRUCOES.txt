@@ -26,13 +26,10 @@ Troque SEU_REPO pelo nome que voce escolheu
 
 PASSO 3 - COMPILAR
 -------------------
-O arquivo de compilacao ja foi criado em:
-.github/workflows/build.yml
-
-Agora adicione e envie ele:
+Adicione e envie os arquivos do wrapper + workflow:
 
 git add .
-git commit -m "add workflow"
+git commit -m "add workflow e wrapper"
 git push
 
 PASSO 4 - BAIXAR O APK

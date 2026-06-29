@@ -35,9 +35,17 @@ jobs:
         run: |
           cd ${{ github.workspace }}
           echo "sdk.dir=$ANDROID_HOME" > local.properties
-          gradle assembleRelease --no-daemon --stacktrace 2>&1 | tail -100
+          gradle assembleRelease --no-daemon --stacktrace
+
+      - name: List generated APKs
+        run: |
+          echo "=== APKs ==="
+          find app -type f -name "*.apk"
+          echo "=== Outputs ==="
+          find app/build/outputs -type f || true
 
       - uses: actions/upload-artifact@v4
         with:
           name: TsPlayer-APK
-          path: app/build/outputs/apk/release/*.apk
+          path: |
+            app/build/outputs/**/*.apk

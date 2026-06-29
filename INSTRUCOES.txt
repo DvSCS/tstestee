@@ -1,0 +1,48 @@
+COMO COMPILAR O APP SEM INSTALAR NADA NO PC
+=============================================
+
+Metodo: GitHub Actions (compila online nos servidores do GitHub)
+
+PASSO 1 - CRIAR REPOSITORIO NO GITHUB
+--------------------------------------
+- Va em https://github.com/new
+- Crie um repositorio com qualquer nome (ex: TsPlayer)
+- Deixe como PUBLICO
+- NAO marque nenhuma opcao (README, .gitignore, etc)
+- Clique em "Create repository"
+
+PASSO 2 - ENVIAR O PROJETO
+---------------------------
+Abra o terminal (PowerShell) na pasta TsPlayer-Android e cole:
+
+git init
+git add .
+git commit -m "primeiro"
+git remote add origin https://github.com/SEU_USUARIO/SEU_REPO.git
+git push -u origin main
+
+Troque SEU_USUARIO pelo seu nome de usuario do GitHub
+Troque SEU_REPO pelo nome que voce escolheu
+
+PASSO 3 - COMPILAR
+-------------------
+O arquivo de compilacao ja foi criado em:
+.github/workflows/build.yml
+
+Agora adicione e envie ele:
+
+git add .
+git commit -m "add workflow"
+git push
+
+PASSO 4 - BAIXAR O APK
+-----------------------
+- Va no site do GitHub (seu repositorio)
+- Clique na aba "Actions"
+- Voce vai ver um workflow rodando (amarelo)
+- Espere ficar verde (cerca de 5-10 minutos)
+- Clique no nome do workflow
+- Role para baixo, na secao "Artifacts"
+- Clique em "TsPlayer-APK" para baixar o APK
+
+PRONTO! O APK esta compilado e pronto para instalar no celular.

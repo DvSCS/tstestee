@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="bg_dark">#0F0C1A</color>
+    <color name="bg_panel">#1A1530</color>
+    <color name="accent">#00E5FF</color>
+    <color name="accent_dim">#0099CC</color>
+    <color name="text_primary">#C8D6E5</color>
+    <color name="text_dim">#5A6A8A</color>
+    <color name="surface">#201840</color>
+    <color name="play_bg">#0088CC</color>
+    <color name="stop_bg">#662222</color>
+</resources>

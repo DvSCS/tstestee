@@ -17,28 +17,30 @@ Abra o terminal (PowerShell) na pasta TsPlayer-Android e cole:
 
 git init
 git add .
-git commit -m "primeiro"
+git commit -m "primeira versao"
 git remote add origin https://github.com/SEU_USUARIO/SEU_REPO.git
 git push -u origin main
 
 Troque SEU_USUARIO pelo seu nome de usuario do GitHub
 Troque SEU_REPO pelo nome que voce escolheu
 
-PASSO 3 - COMPILAR
--------------------
-Adicione e envie os arquivos do wrapper + workflow:
+PASSO 3 - ACOMPANHAR A COMPILACAO
+-----------------------------------
+- Va no site do GitHub (seu repositorio)
+- Clique na aba "Actions"
+- Voce vai ver um workflow rodando (circulo amarelo)
+- Espere ficar verde (cerca de 5-10 minutos)
 
-git add .
-git commit -m "add workflow e wrapper"
-git push
+Se der erro (vermelho):
+- Clique no workflow que falhou
+- Clique no job "build"
+- Role a tela procurando a mensagem de ERRO em vermelho
+- Mande uma foto ou copie o texto vermelho para eu corrigir
 
 PASSO 4 - BAIXAR O APK
 -----------------------
-- Va no site do GitHub (seu repositorio)
-- Clique na aba "Actions"
-- Voce vai ver um workflow rodando (amarelo)
-- Espere ficar verde (cerca de 5-10 minutos)
-- Clique no nome do workflow
+Quando ficar verde:
+- Clique no workflow concluido
 - Role para baixo, na secao "Artifacts"
 - Clique em "TsPlayer-APK" para baixar o APK
 

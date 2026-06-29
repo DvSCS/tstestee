@@ -1,67 +1,43 @@
 package com.tsplayer
 
+import android.media.MediaPlayer
 import android.net.Uri
 import android.os.Bundle
+import android.view.SurfaceHolder
 import android.widget.SeekBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import com.google.android.exoplayer2.ExoPlayer
-import com.google.android.exoplayer2.MediaItem
-import com.google.android.exoplayer2.PlaybackException
-import com.google.android.exoplayer2.Player
-import com.google.android.exoplayer2.source.ProgressiveMediaSource
-import com.google.android.exoplayer2.upstream.DefaultHttpDataSource
+import java.io.IOException
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(), SurfaceHolder.Callback {
 
-    private lateinit var player: ExoPlayer
+    private var mediaPlayer: MediaPlayer? = null
     private lateinit var urlInput: TextView
-    private lateinit var btnPlay: TextView
-    private lateinit var btnStop: TextView
     private lateinit var volumeBar: SeekBar
     private lateinit var progressBar: SeekBar
     private lateinit var tvCurrent: TextView
     private lateinit var tvTotal: TextView
+    private lateinit var surfaceHolder: SurfaceHolder
 
     private var isDragging = false
+    private var isPrepared = false
+    private var progressUpdater: Thread? = null
+    private var running = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
         urlInput = findViewById(R.id.urlInput)
-        btnPlay = findViewById(R.id.btnPlay)
-        btnStop = findViewById(R.id.btnStop)
         volumeBar = findViewById(R.id.volumeBar)
         progressBar = findViewById(R.id.progressBar)
         tvCurrent = findViewById(R.id.tvCurrentTime)
         tvTotal = findViewById(R.id.tvTotalTime)
+        surfaceHolder = findViewById(R.id.surfaceView).holder
+        surfaceHolder.addCallback(this)
 
-        player = ExoPlayer.Builder(this).build()
-        findViewById<com.google.android.exoplayer2.ui.PlayerView>(R.id.playerView).player = player
-
-        player.addListener(object : Player.Listener {
-            override fun onPlaybackStateChanged(state: Int) {
-                if (state == Player.STATE_READY && !isDragging) {
-                    updateProgress()
-                }
-            }
-
-            override fun onPlayerError(error: PlaybackException) {
-                runOnUiThread {
-                    Toast.makeText(this@MainActivity, "Erro: ${error.localizedMessage}", Toast.LENGTH_LONG).show()
-                }
-            }
-
-            override fun onIsPlayingChanged(isPlaying: Boolean) {
-                if (isPlaying) {
-                    startProgressUpdater()
-                }
-            }
-        })
-
-        btnPlay.setOnClickListener {
+        findViewById<TextView>(R.id.btnPlay).setOnClickListener {
             val url = urlInput.text.toString().trim()
             if (url.isEmpty()) {
                 Toast.makeText(this, "Insira uma URL", Toast.LENGTH_SHORT).show()
@@ -70,17 +46,13 @@ class MainActivity : AppCompatActivity() {
             playUrl(url)
         }
 
-        btnStop.setOnClickListener {
-            player.stop()
-            player.clearMediaItems()
-            progressBar.progress = 0
-            tvCurrent.text = "0:00"
-            tvTotal.text = "0:00"
+        findViewById<TextView>(R.id.btnStop).setOnClickListener {
+            stopPlayback()
         }
 
         volumeBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(sb: SeekBar?, p: Int, fromUser: Boolean) {
-                player.volume = p / 100f
+                mediaPlayer?.setVolume(p / 100f, p / 100f)
             }
             override fun onStartTrackingTouch(sb: SeekBar?) {}
             override fun onStopTrackingTouch(sb: SeekBar?) {}
@@ -88,10 +60,10 @@ class MainActivity : AppCompatActivity() {
 
         progressBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(sb: SeekBar?, p: Int, fromUser: Boolean) {
-                if (fromUser) {
-                    val dur = player.duration
+                if (fromUser && isPrepared) {
+                    val dur = mediaPlayer?.duration ?: return
                     if (dur > 0) {
-                        player.seekTo((dur * p / 100).toLong())
+                        mediaPlayer?.seekTo((dur * p / 100).toInt())
                         tvCurrent.text = formatTime((dur * p / 100).toLong())
                     }
                 }
@@ -102,40 +74,68 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun playUrl(url: String) {
+        stopPlayback()
         try {
-            player.stop()
-            player.clearMediaItems()
-
-            val dataSourceFactory = DefaultHttpDataSource.Factory()
-            val source = ProgressiveMediaSource.Factory(dataSourceFactory)
-                .createMediaSource(MediaItem.fromUri(Uri.parse(url)))
-
-            player.setMediaSource(source)
-            player.prepare()
-            player.play()
+            mediaPlayer = MediaPlayer().apply {
+                setAudioStreamType(android.media.AudioManager.STREAM_MUSIC)
+                setDataSource(url)
+                setDisplay(surfaceHolder)
+                setOnPreparedListener {
+                    isPrepared = true
+                    start()
+                    startProgressUpdater()
+                }
+                setOnErrorListener { mp, what, extra ->
+                    runOnUiThread {
+                        Toast.makeText(this@MainActivity, "Erro: $what/$extra", Toast.LENGTH_LONG).show()
+                    }
+                    true
+                }
+                prepareAsync()
+            }
         } catch (e: Exception) {
             Toast.makeText(this, "Falha: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
 
-    private fun startProgressUpdater() {
-        Thread {
-            while (player.isPlaying) {
-                if (!isDragging) {
-                    runOnUiThread { updateProgress() }
-                }
-                Thread.sleep(250)
-            }
-        }.apply { isDaemon = true }.start()
+    private fun stopPlayback() {
+        running = false
+        isPrepared = false
+        mediaPlayer?.apply {
+            if (isPlaying) stop()
+            release()
+        }
+        mediaPlayer = null
+        progressBar.progress = 0
+        tvCurrent.text = "0:00"
+        tvTotal.text = "0:00"
     }
 
-    private fun updateProgress() {
-        val dur = player.duration
-        val pos = player.currentPosition
+    private fun startProgressUpdater() {
+        running = true
+        progressUpdater = Thread {
+            while (running && isPrepared) {
+                try {
+                    val mp = mediaPlayer ?: break
+                    if (mp.isPlaying && !isDragging) {
+                        runOnUiThread { updateProgress(mp) }
+                    }
+                    Thread.sleep(250)
+                } catch (_: Exception) {
+                    break
+                }
+            }
+        }.apply { isDaemon = true }
+        progressUpdater?.start()
+    }
+
+    private fun updateProgress(mp: MediaPlayer) {
+        val dur = mp.duration
+        val pos = mp.currentPosition
         if (dur > 0) {
             progressBar.progress = ((pos.toFloat() / dur) * 100).toInt()
-            tvCurrent.text = formatTime(pos)
-            tvTotal.text = formatTime(dur)
+            tvCurrent.text = formatTime(pos.toLong())
+            tvTotal.text = formatTime(dur.toLong())
         }
     }
 
@@ -150,13 +150,17 @@ class MainActivity : AppCompatActivity() {
 
     private fun Int.pad(): String = toString().padStart(2, '0')
 
-    override fun onStop() {
-        super.onStop()
-        player.pause()
+    override fun surfaceCreated(holder: SurfaceHolder) {}
+    override fun surfaceChanged(holder: SurfaceHolder, format: Int, w: Int, h: Int) {}
+    override fun surfaceDestroyed(holder: SurfaceHolder) {}
+
+    override fun onPause() {
+        super.onPause()
+        mediaPlayer?.pause()
     }
 
     override fun onDestroy() {
+        stopPlayback()
         super.onDestroy()
-        player.release()
     }
 }

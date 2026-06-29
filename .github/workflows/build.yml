@@ -1,5 +1,5 @@
 name: Build APK
-on: push
+on: [push]
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -9,11 +9,20 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
-      - uses: android-actions/setup-android@v3
-      - name: Build with Gradle
-        uses: gradle/actions/setup-gradle@v3
-        with:
-          arguments: assembleRelease
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Generate Gradle Wrapper
+        run: |
+          gradle wrapper --gradle-version 8.5
+          chmod +x gradlew
+
+      - name: Build APK
+        run: |
+          echo "sdk.dir=$ANDROID_HOME" > local.properties
+          ./gradlew assembleRelease --no-daemon --stacktrace 2>&1
+
       - uses: actions/upload-artifact@v4
         with:
           name: TsPlayer-APK
